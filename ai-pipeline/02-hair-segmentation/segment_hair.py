@@ -199,7 +199,7 @@ class HairSegmenter:
         if save_visualization:
             # Masked image (only face, rest black)
             masked_image = image.copy()
-            masked_image[face_mask >0] = 0
+            masked_image[hair_mask > 0] = 0
             masked_path = output_dir / f"{base_name}_masked.jpg"
             cv2.imwrite(str(masked_path), masked_image)
             
