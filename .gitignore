@@ -1,0 +1,49 @@
+﻿# Python
+__pycache__/
+*.py[cod]
+*.class
+*.so
+.Python
+env/
+venv/
+*.egg-info/
+
+# AI Model Weights
+ai-pipeline/02-hair-segmentation/models/weights/*.pth
+ai-pipeline/02-hair-segmentation/models/weights/*.pt
+
+# Data
+*.obj
+*.ply
+*.pcd
+data/
+temp/
+output/
+
+# Environment
+.env
+.env.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Node
+node_modules/
+mobile-app/node_modules/
+
+# Build
+build/
+dist/
+*.log
+
+# Docker
+docker-compose.override.yml
+
+
+!.gitkeep
