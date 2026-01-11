@@ -9,11 +9,11 @@ Handles complete workflow for a single user:
 
 import os
 import sys
-import shutil
 from pathlib import Path
 from datetime import datetime
 import json
 import logging
+
 
 # Setup logging
 def setup_logging(user_id):
@@ -104,11 +104,11 @@ Created: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
             self.status["steps"]["1_structure_created"] = True
             self.save_status()
             
-            self.logger.info(f"✅ Directory structure created: {self.data_dir}")
+            self.logger.info(f"Directory structure created: {self.data_dir}")
             return True
             
         except Exception as e:
-            self.logger.error(f"❌ Failed to create structure: {e}")
+            self.logger.error(f"Failed to create structure: {e}")
             self.status["errors"].append(str(e))
             self.save_status()
             return False
@@ -130,13 +130,13 @@ Created: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
             
             if photo_count < min_photos:
                 error_msg = f"Insufficient photos: {photo_count} < {min_photos}"
-                self.logger.error(f"❌ {error_msg}")
+                self.logger.error(f"{error_msg}")
                 self.status["errors"].append(error_msg)
                 self.save_status()
                 return False
             
             if photo_count > max_photos:
-                self.logger.warning(f"⚠️  More than {max_photos} photos, using first {max_photos}")
+                self.logger.warning(f"More than {max_photos} photos, using first {max_photos}")
                 photos = photos[:max_photos]
             
             # Check photo quality (resolution, corruption)
@@ -146,22 +146,22 @@ Created: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
                     import cv2
                     img = cv2.imread(str(photo))
                     if img is None:
-                        self.logger.warning(f"⚠️  Corrupted image: {photo.name}")
+                        self.logger.warning(f"Corrupted image: {photo.name}")
                         continue
                     
                     h, w = img.shape[:2]
                     if w < 800 or h < 800:
-                        self.logger.warning(f"⚠️  Low resolution: {photo.name} ({w}x{h})")
+                        self.logger.warning(f"Low resolution: {photo.name} ({w}x{h})")
                         continue
                     
                     valid_photos.append(photo)
                     
                 except Exception as e:
-                    self.logger.warning(f"⚠️  Cannot read {photo.name}: {e}")
+                    self.logger.warning(f"Cannot read {photo.name}: {e}")
             
             if len(valid_photos) < min_photos:
                 error_msg = f"Only {len(valid_photos)} valid photos after quality check"
-                self.logger.error(f"❌ {error_msg}")
+                self.logger.error(f"{error_msg}")
                 self.status["errors"].append(error_msg)
                 self.save_status()
                 return False
@@ -170,11 +170,11 @@ Created: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
             self.status["steps"]["2_photos_validated"] = True
             self.save_status()
             
-            self.logger.info(f"✅ Validation passed: {len(valid_photos)} valid photos")
+            self.logger.info(f"Validation passed: {len(valid_photos)} valid photos")
             return True
             
         except Exception as e:
-            self.logger.error(f"❌ Validation failed: {e}")
+            self.logger.error(f"Validation failed: {e}")
             self.status["errors"].append(str(e))
             self.save_status()
             return False
@@ -229,12 +229,12 @@ Created: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
                     processed_count += 1
                     
                 except Exception as e:
-                    self.logger.error(f"❌ Failed to process {photo.name}: {e}")
+                    self.logger.error(f"Failed to process {photo.name}: {e}")
                     failed_count += 1
             
             if processed_count == 0:
                 error_msg = "No photos were successfully processed"
-                self.logger.error(f"❌ {error_msg}")
+                self.logger.error(f"{error_msg}")
                 self.status["errors"].append(error_msg)
                 self.save_status()
                 return False
@@ -242,11 +242,11 @@ Created: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
             self.status["steps"]["3_segmentation_complete"] = True
             self.save_status()
             
-            self.logger.info(f"✅ Segmentation complete: {processed_count} processed, {failed_count} failed")
+            self.logger.info(f"Segmentation complete: {processed_count} processed, {failed_count} failed")
             return True
             
         except Exception as e:
-            self.logger.error(f"❌ Segmentation failed: {e}")
+            self.logger.error(f"Segmentation failed: {e}")
             self.status["errors"].append(str(e))
             self.save_status()
             import traceback
@@ -258,18 +258,39 @@ Created: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
         self.logger.info("Starting photogrammetry...")
         
         try:
-            # TODO: Implement Metashape pipeline
-            # This will be in next step
+            # Import Metashape wrapper
+            sys.path.insert(0, str(Path("ai-pipeline/03-photogrammetry")))
+            from run_metashape import run_metashape_reconstruction
             
-            self.logger.info("⏳ Photogrammetry module not implemented yet")
-            self.logger.info("   Next step: Create metashape_pipeline.py")
+            # Run reconstruction
+            self.logger.info("Running Metashape reconstruction...")
+            output_model = run_metashape_reconstruction(
+                photos_dir=str(self.masked_photos_dir),
+                project_dir=str(self.metashape_dir),
+                output_dir=str(self.output_dir)
+            )
             
-            return False
+            if output_model is None:
+                error_msg = "Photogrammetry failed"
+                self.logger.error(f"{error_msg}")
+                self.status["errors"].append(error_msg)
+                self.save_status()
+                return False
+            
+            # Success
+            self.status["steps"]["4_photogrammetry_complete"] = True
+            self.status["steps"]["5_model_ready"] = True
+            self.save_status()
+            
+            self.logger.info(f"Model ready: {output_model}")
+            return True
             
         except Exception as e:
-            self.logger.error(f"❌ Photogrammetry failed: {e}")
+            self.logger.error(f"Photogrammetry failed: {e}")
             self.status["errors"].append(str(e))
             self.save_status()
+            import traceback
+            traceback.print_exc()
             return False
     
     def save_status(self):
@@ -324,22 +345,23 @@ def main():
     # Execute requested step
     if args.step == 'init' or args.step == 'all':
         if not processor.create_structure():
-            print("\n❌ Failed at: Structure creation")
+            print("\nFailed at: Structure creation")
             sys.exit(1)
     
     if args.step == 'validate' or args.step == 'all':
         if not processor.validate_photos():
-            print("\n❌ Failed at: Photo validation")
+            print("\nFailed at: Photo validation")
             sys.exit(1)
     
     if args.step == 'segment' or args.step == 'all':
         if not processor.run_segmentation():
-            print("\n❌ Failed at: Segmentation")
+            print("\nFailed at: Segmentation")
             sys.exit(1)
     
     if args.step == 'photogrammetry' or args.step == 'all':
         if not processor.run_photogrammetry():
-            print("\n⏳ Photogrammetry step skipped (not implemented yet)")
+            print("\nFailed at: Photogrammetry")
+            sys.exit(1)
     
     # Print final status
     print("\n" + "=" * 60)
@@ -348,11 +370,11 @@ def main():
     
     status = processor.get_status()
     for step, completed in status["steps"].items():
-        icon = "✅" if completed else "⏳"
-        print(f"{icon} {step}")
+        icon = "OK" if completed else "PENDING"
+        print(f"[{icon}] {step}")
     
     if status["errors"]:
-        print(f"\n⚠️  Errors: {len(status['errors'])}")
+        print(f"\nErrors: {len(status['errors'])}")
         for error in status["errors"]:
             print(f"   - {error}")
     
